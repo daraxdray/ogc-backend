@@ -1,0 +1,144 @@
+                                                    ### Backend Deployment ###
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: ogc
+  labels:
+    app: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-deployment
+  template:
+    metadata:
+      labels:
+        app: backend-deployment
+    spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: "ogc-pool-back"
+      restartPolicy: Always
+      containers:
+      - name: ogc-backend
+        image: $regName/$imageName:$imageVersion
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: 115Mi
+            cpu: 100m
+        livenessProbe:
+          httpGet:
+            path: /books/all
+            port: 80
+            host: 159.89.213.108
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        env:
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: MONGO_URI
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: DB_NAME
+        - name: PORT
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: PORT
+        - name: GGL_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: GGL_CLIENT_ID
+        - name: GGL_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: GGL_CLIENT_SECRET
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: SESSION_SECRET
+        - name: FB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: FB_CLIENT_ID
+        - name: FB_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: FB_CLIENT_SECRET
+        - name: SENDER_MAIL
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: SENDER_MAIL
+        - name: SENDER_PASS
+          valueFrom:
+            secretKeyRef:
+              name: mongo-secret
+              key: SENDER_PASS
+      tolerations:
+      - key: "type"
+        operator: "Equal"
+        value: "back"
+        effect: "NoSchedule"
+      imagePullSecrets:
+      - name: ogc-reg
+---
+                                                    ### Backend Service ###
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: backend-service
+#   namespace: ogc
+# spec:
+#   type: LoadBalancer 
+#   ports: 
+#     - name: backend-http
+#       port: 80
+#       targetPort: 3000
+#     - name: backend-ssl
+#       port: 443
+#       targetPort: 3000
+#   selector:
+#     app: backend-deployment
+
+---
+                                                    ### Backend HPA ###
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: ogc
+spec:
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 10
+      policies:
+      - type: Percent
+        value: 30
+        periodSeconds: 60
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend-deployment
+  minReplicas: 8
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 85
