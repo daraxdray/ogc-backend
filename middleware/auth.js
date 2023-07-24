@@ -20,7 +20,7 @@ exports.loginRequired = (req, res, next, err) => {
 exports.signIn = async (req, res, next) => {
   try {
     const userExists = await User.findOne({ email: req.body.email });
-    if (userExists && (userExists.role === "admin") | "super admin") {
+    if (userExists && ((userExists.role === "admin") || (userExists.role === "super admin")  || (userExists.role === "user"))) {
       const comparePwd =  bcrypt.compareSync(
         req.body.password,
         userExists.password
@@ -28,7 +28,7 @@ exports.signIn = async (req, res, next) => {
       if (comparePwd) {
         sess = req.session;
         sess.email = req.body.email;
-        return res.status(200).json({success:true,sess});
+        return res.status(200).json({success:true,sess, user:userExists});
       } else {
         return res.status(200).send({success:false, message:"Wrong credentials provided!"});
       }

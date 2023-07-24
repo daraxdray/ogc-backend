@@ -8,9 +8,7 @@ const auth = require("../middleware/auth");
 //Login with email and password using passport
 router.post(
   "/login",
-  passport.authenticate("local", {
-    failureMessage: true,
-  }),
+  passport.authenticate("local", ),
   async function (req, res) {
     res.status(200).json(req.user);
   }

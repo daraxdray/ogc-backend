@@ -2,6 +2,8 @@ const CartService = require("../services/cart.service");
 var Cart = require("../models/Cart");
 const User = require("../models/User");
 const Stripe = require("stripe");
+const PKLIVE =  "pk_live_51LZrxEBKWbkdOPY6MZwmOdyTyHilnx3EaX8GXZM3gRzTUm2vzDUH4geLLUnfnG6aK3kDaPraFBA0fN6RgLsR74B600iVQIIj3n"
+const PKTEST =  "pk_live_51LZrxEBKWbkdOPY6MZwmOdyTyHilnx3EaX8GXZM3gRzTUm2vzDUH4geLLUnfnG6aK3kDaPraFBA0fN6RgLsR74B600iVQIIj3n"
 // GET ALL CARTS
 exports.getCarts = async function (req, res, next) {
   var page = req.params.page ? req.params.page : 1;
@@ -126,6 +128,26 @@ exports.addMusicToCart = async function (req, res) {
     });
   }
 };
+exports.addMusicToCartNew = async function (req, res) {
+  try {
+    var cart = await CartService.addMusicToCartNew(
+      req.params.id,
+      req.body.musicId,
+      req.body.userId
+    );
+
+    return res.status(200).json({
+      status: 200,
+      data: cart,
+      message: "Succesfully added book to Cart",
+    });
+  } catch (e) {
+    return res.status(400).json({
+      status: 400,
+      message: e.message,
+    });
+  }
+};
 // Add Book to shopping CART
 exports.addBookToCart = async function (req, res) {
   try {
@@ -147,7 +169,29 @@ exports.addBookToCart = async function (req, res) {
       message: e.message,
     });
   }
+}
+exports.addBookToCartNew = async function (req, res) {
+  try {
+    var cart = await CartService.addBookToCartNew(
+      req.params.id,
+      req.body.bookId,
+      req.body.paperBook,
+      req.body.userId
+    );
+
+    return res.status(200).json({
+      status: 200,
+      data: cart,
+      message: "Succesfully added book to Cart",
+    });
+  } catch (e) {
+    return res.status(400).json({
+      status: 400,
+      message: e.message,
+    });
+  }
 };
+
 exports.addAlbumToCart = async function (req, res) {
   try {
     var cart = await CartService.addAlbumToCart(
@@ -322,9 +366,7 @@ exports.purchaseItem = async function (req, res) {
     });
   }
 };
-const stripe = Stripe(
-  "pk_live_51LZrxEBKWbkdOPY6MZwmOdyTyHilnx3EaX8GXZM3gRzTUm2vzDUH4geLLUnfnG6aK3kDaPraFBA0fN6RgLsR74B600iVQIIj3n"
-);
+const stripe = Stripe(PKTEST);
 exports.paymentSheet = async function (req, res) {
   var elements = Stripe.elements;
   var customer = null;
@@ -366,7 +408,69 @@ exports.paymentSheet = async function (req, res) {
     paymentIntent: paymentIntent.client_secret,
     ephemeralKey: ephemeralKey.secret,
     customer: customer.id,
-    publishableKey:
-      "pk_live_51LZrxEBKWbkdOPY6MZwmOdyTyHilnx3EaX8GXZM3gRzTUm2vzDUH4geLLUnfnG6aK3kDaPraFBA0fN6RgLsR74B600iVQIIj3n",
+    publishableKey:PKTEST,
   });
 };
+exports.paymentSheet2 = async function (req, res) {
+  var elements = Stripe.elements;
+  var customer = null;
+  var user = await User.findById(req.body.id);
+  // Use an existing Customer ID if this is a returning customer.
+  if (user.customerId) {
+    if (req.body.language) {
+      customer = await stripe.customers.update(user.customerId, {
+        preferred_locales: [req.body.language],
+      });
+    } else {
+      customer = await stripe.customers.retrieve(user.customerId);
+    }
+  } else {
+    customer = await stripe.customers.create({
+      email: user.email,
+      name: user.firstname + " " + user.lastname,
+      address: { city: user.city, country: user.country },
+      preferred_locales: [req.body.language],
+    });
+    user.customerId = customer.id;
+    user.save();
+  }
+
+  const ephemeralKey = await stripe.ephemeralKeys.create(
+    { customer: customer.id },
+    { apiVersion: "2020-08-27" }
+  );
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: req.body.total,
+    currency: req.body.currency,
+    customer: customer.id,
+    automatic_payment_methods: {
+      enabled: true,
+    },
+  });
+
+  res.json({
+    paymentIntent: paymentIntent.client_secret,
+    ephemeralKey: ephemeralKey.secret,
+    customer: customer.id,
+    publishableKey:PKTEST,
+  });
+};
+exports.activateCart = async function (req, res) {
+  try {
+    var cart = await CartService.activatePurchaseItem(
+      req.body.cartItems,
+      req.body.userId,
+    );
+
+    return res.status(200).json({
+      status: 200,
+      data: cart,
+      message: "Succesfully activate you purchase",
+    });
+  } catch (e) {
+    return res.status(400).json({
+      status: 400,
+      message: e.message,
+    });
+  }
+}

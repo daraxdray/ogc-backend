@@ -99,6 +99,28 @@ exports.addMusicToCart = async function (id, music_id) {
     throw Error(e, "error while adding music to cart");
   }
 };
+exports.addMusicToCartNew = async function (id, music_id, userId) {
+  try {
+    var mus = await Music.findById(music_id);
+    var cart = await Cart.findById(id).populate({
+      path: "music",
+      populate: {
+        path: "music",
+      },
+    });
+    var user = await User.findById(userId);
+    cart.music.push(mus);
+    cart.total = (cart.total + mus.price).toFixed(2);
+    user.cart = cart;
+    await cart.save();
+    await user.save();
+    return cart;
+    return cart;
+  } catch (e) {
+    console.log(e)
+    throw Error(e);
+  }
+};
 //Add BOOK to Cart
 exports.addBookToCart = async function (id, book_id, ebook) {
   try {
@@ -111,10 +133,7 @@ exports.addBookToCart = async function (id, book_id, ebook) {
       },
     });
     var user = await User.findOne({ "cart._id": cart._id });
-    console.log(cart.total);
-    console.log(book.price);
     cart.total = (cart.total + book.price).toFixed(2);
-    console.log(cart.total);
     cart.books.push({ book: book, paperBook: ebook });
 
     user.cart = cart;
@@ -122,6 +141,29 @@ exports.addBookToCart = async function (id, book_id, ebook) {
     await user.save();
     return cart;
   } catch (e) {
+    console.log(e)
+    throw Error(e);
+  }
+};
+exports.addBookToCartNew = async function (id, book_id, ebook, userId) {
+  try {
+    var book = await Book.findById(book_id);
+    var cart = await Cart.findById(id).populate({
+      path: "books",
+      populate: {
+        path: "book",
+      },
+    });
+    var user = await User.findById(userId);
+    cart.total = (cart.total + book.price).toFixed(2);
+    cart.books.push({ book: book, paperBook: ebook });
+
+    user.cart = cart;
+    await cart.save();
+    await user.save();
+    return cart;
+  } catch (e) {
+    console.log(e)
     throw Error(e);
   }
 };
@@ -435,3 +477,30 @@ exports.purchaseItem = async function (id, priceId, type) {
     throw Error(e);
   }
 };
+exports.activatePurchaseItem = async function (cartItems, userId) {
+  try {
+    const user = await User.findById(userId);
+    for (const item of cartItems) {
+      if (item.contentType === "Book") {
+        const book = await Book.findById(item.id);
+        book && user.library.push(book);
+      } else if (item.contentType === "Music") {
+        const mus = await Music.findById(item.id);
+        mus && user.music.push(mus);
+      } else if (item.contentType === "Podcast") {
+        const podc = await Podcast.findById(item.id);
+        podc && user.podcasts.push(podc);
+      }
+    }
+    await user.save(); 
+    return user; 
+  } catch (e) {
+    throw Error(e);
+  }
+};
+
+
+
+
+
+
