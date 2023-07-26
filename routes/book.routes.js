@@ -20,5 +20,6 @@ router.put("/reviews/remove/:id", BookController.removeBookReview);
 router.put("/reviews/update/:id", BookController.updateBookReview);
 router.get("/reviews/:id", BookController.getBookReviews);
 router.get("/reviews-average/:id", BookController.getBookReviewsAverage);
+router.post("/search", BookController.getSearchResults);
 
 module.exports = router;

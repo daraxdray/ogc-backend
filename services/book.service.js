@@ -43,16 +43,34 @@ exports.removeBook = async function (id) {
 //SEARCH FOR BOOK BY TITLE OR DESCRIPTION
 exports.getSearchResults = async function (text, page, limit) {
   try {
-    Books.createIndexes({
-      title: text,
-      description: text,
-      author: text,
-    }).select(["-pdf_file"]);
+  //  await Book.createIndexes({
+  //     title: 'text',
+  //     description: 'text',
+  //     author: 'text',
+  //   });
+    console.log(await Book.createIndexes())
+    const query = { $text: { $search: text } };
+    var content = await Book.find(query);
+    console.log("Content",content);
+    return content;
+  } catch (e) {
+    throw Error(e + " Error while fetching search results");
+  }
+};
+exports.searchBooks = async function (text, page, limit) {
+  try {
+    Book.find({
+      $or: [
+        { title: { $regex: text, $options: 'i' } }, // Case-insensitive search for title
+        { description: { $regex: text, $options: 'i' } }, // Case-insensitive search for description
+        { author: { $regex: text, $options: 'i' } }, // Case-insensitive search for author
+      ],
+    })
     const query = { $text: { $search: text } };
     var content = await Book.find(query);
     return content;
   } catch (e) {
-    throw Error(e + "Error while fetching search results");
+    throw Error(e + " Error while fetching search results");
   }
 };
 
