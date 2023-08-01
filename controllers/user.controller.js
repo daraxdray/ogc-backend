@@ -231,6 +231,12 @@ exports.addPodcastForUser = async (req, res) => {
 
 exports.getUserById = async function (req, res, next) {
   try {
+    if(!req.params.id){
+      return res.status(400).json({
+        status: 400,
+        message: "No user found with provided parameter.",
+      });
+    }
     const user = await UserService.getUserById(req.params.id);
     if (user) {
       return res.status(200).json({
